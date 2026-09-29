@@ -7,7 +7,7 @@ import (
 )
 
 func TestKeys_ReturnAllKeysSorted(t *testing.T) {
-	store := NewStore()
+	store := NewStore(3)
 	store.Set("a", "1")
 	store.Set("b", "2")
 	store.Set("c", "234")
@@ -19,17 +19,27 @@ func TestKeys_ReturnAllKeysSorted(t *testing.T) {
 	}
 }
 
-func Test_EmptyStore(t *testing.T) {
-	store := NewStore()
+func Test_SetFull(t *testing.T) {
+	store := NewStore(3)
+	store.Set("a", "1")
+	store.Set("b", "2")
+	store.Set("c", "3")
 
+	if err := store.Set("d", "4"); err == nil || !errors.Is(err, ErrStoreFull) {
+		t.Error("Set() on full store should return ErrStoreFull")
+	}
+}
+
+func Test_EmptyStore(t *testing.T) {
+	store := NewStore(3)
 	got := store.Keys()
 	if len(got) != 0 {
 		t.Errorf("Keys() on Empty store = %v, wanted empty slice", got)
 	}
 }
 
-func Test_SetGe_EmptyKeys(t *testing.T) {
-	store := NewStore()
+func Test_SetGet_EmptyKeys(t *testing.T) {
+	store := NewStore(3)
 
 	if _, err := store.Get(""); err == nil || !errors.Is(err, ErrEmptyKey) {
 		t.Error("Get() Failed")
@@ -37,7 +47,7 @@ func Test_SetGe_EmptyKeys(t *testing.T) {
 }
 
 func Test_SetGet(t *testing.T) {
-	store := NewStore()
+	store := NewStore(3)
 	store.Set("a", "1")
 
 	val, err := store.Get("a")
