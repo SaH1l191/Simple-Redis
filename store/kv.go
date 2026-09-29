@@ -8,41 +8,19 @@ import (
 
 type Store struct {
 	data    map[string]string
-	maxSize int // 0 -> no limit
+	maxSize int // 0 means no limit
 }
 
-var ErrEmptyKey = errors.New("Key cannot be empty")
-var ErrStoreFull = errors.New("Store is full")
+var (
+	ErrEmptyKey  = errors.New("key cannot be empty")
+	ErrStoreFull = errors.New("store is full")
+)
 
 func NewStore(maxSize int) *Store {
 	return &Store{
-		maxSize: maxSize,
 		data:    make(map[string]string),
+		maxSize: maxSize,
 	}
-}
-
-func (s *Store) Keys() []string {
-	keys := make([]string, 0, len(s.data))
-	for key := range s.data {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-func (s *Store) Get(key string) (string, error) {
-	if key == "" {
-		return "", ErrEmptyKey
-	}
-	val, ok := s.data[key]
-	if !ok {
-		return "", fmt.Errorf("key not found: %s", key)
-	}
-	return val, nil
-}
-
-func (s *Store) Len() int {
-	return len(s.data)
 }
 
 func (s *Store) Set(key string, val string) error {
@@ -52,12 +30,42 @@ func (s *Store) Set(key string, val string) error {
 
 	_, exists := s.data[key]
 
-	if s.maxSize > 0 && s.Len() >= s.maxSize && !exists && s.maxSize != 0 {
+	if s.maxSize > 0 && s.Len() >= s.maxSize && !exists {
 		return ErrStoreFull
 	}
 
 	s.data[key] = val
+
 	return nil
+}
+
+func (s *Store) Get(key string) (string, error) {
+	if key == "" {
+		return "", ErrEmptyKey
+	}
+
+	val, exists := s.data[key]
+	if !exists {
+		return "", fmt.Errorf("key not found: %s", key)
+	}
+
+	return val, nil
+}
+
+func (s *Store) Keys() []string {
+	keys := make([]string, 0, len(s.data))
+
+	for key := range s.data {
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+
+	return keys
+}
+
+func (s *Store) Len() int {
+	return len(s.data)
 }
 
 func (s *Store) Delete(key string) {
@@ -69,8 +77,13 @@ func (s *Store) Rename(oldKey string, newKey string) error {
 	if err != nil {
 		return err
 	}
+
+	if err := s.Set(newKey, val); err != nil {
+		return err
+	}
+
 	delete(s.data, oldKey)
-	s.Set(newKey, val)
+
 	return nil
 }
 
@@ -84,14 +97,17 @@ func (s *Store) Count() int {
 
 func (s *Store) Exists(key string) bool {
 	_, exists := s.data[key]
+
 	return exists
 }
 
 func (s *Store) Pop(key string) (string, bool) {
-	val, ok := s.Get(key)
-	if ok != nil {
+	val, err := s.Get(key)
+	if err != nil {
 		return "", false
 	}
+
 	delete(s.data, key)
+
 	return val, true
 }

@@ -25,19 +25,22 @@ func NewTTLStore(defaultTTL time.Duration) *TTLStore {
 }
 
 func (s *TTLStore) isExpired(entry ttlEntry) bool {
-	return time.Now().After(entry.expiresAt)
+	return !time.Now().Before(entry.expiresAt)
 }
 
 func (s *TTLStore) Set(key, value string) error {
 	return s.SetWithTTL(key, value, s.defaultTTL)
 }
 
-
 func (s *TTLStore) SetWithTTL(
 	key string, value string, ttl time.Duration,
 ) error {
 	if key == "" {
 		return store.ErrEmptyKey
+	}
+
+	if ttl <= 0 {
+		return fmt.Errorf("TTL must be greater than zero")
 	}
 
 	s.data[key] = ttlEntry{
@@ -47,7 +50,6 @@ func (s *TTLStore) SetWithTTL(
 
 	return nil
 }
-
 
 func (s *TTLStore) Get(key string) (string, error) {
 	if key == "" {
@@ -94,6 +96,10 @@ func (s *TTLStore) Rename(oldKey, newKey string) error {
 	if s.isExpired(entry) {
 		delete(s.data, oldKey)
 		return fmt.Errorf("key %s has expired", oldKey)
+	}
+
+	if oldKey == newKey {
+		return nil
 	}
 
 	s.data[newKey] = entry
@@ -175,4 +181,3 @@ func (s *TTLStore) Len() int {
 	}
 	return count
 }
-
