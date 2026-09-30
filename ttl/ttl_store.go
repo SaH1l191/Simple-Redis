@@ -1,6 +1,7 @@
 package ttl
 
 import (
+	"encoding/base64"
 	"fmt"
 	"simple-redis/store"
 	"sort"
@@ -83,10 +84,6 @@ func (s *TTLStore) Keys() []string {
 	return keys
 }
 
-func (s *TTLStore) Delete(key string) {
-	delete(s.data, key)
-}
-
 func (s *TTLStore) Rename(oldKey, newKey string) error {
 	entry, exists := s.data[oldKey]
 	if !exists {
@@ -108,22 +105,17 @@ func (s *TTLStore) Rename(oldKey, newKey string) error {
 	return nil
 }
 
-func (s *TTLStore) Clear() {
+func (s *TTLStore) Clear() error {
 	s.data = make(map[string]ttlEntry)
+	return nil
 }
 
-func (s *TTLStore) Count() int {
-	count := 0
-
-	for key, entry := range s.data {
-		if s.isExpired(entry) {
-			delete(s.data, key)
-			continue
-		}
-
-		count++
+func (s *TTLStore) SetKeyWithEncryption(key, val string) (string, error) {
+	encoded := base64.StdEncoding.EncodeToString([]byte(val))
+	if err := s.SetWithTTL(key, encoded, s.defaultTTL); err != nil {
+		return "", err
 	}
-	return count
+	return encoded, nil
 }
 
 func (s *TTLStore) Exists(key string) bool {
@@ -140,20 +132,23 @@ func (s *TTLStore) Exists(key string) bool {
 	return true
 }
 
-func (s *TTLStore) Pop(key string) (string, bool) {
+func (s *TTLStore) Pop(key string) (string, error) {
+
+	if key == "" {
+		return "", store.ErrEmptyKey
+	}
 	entry, exists := s.data[key]
 	if !exists {
-		return "", false
+		return "", store.ErrKeyNotFound
 	}
-
 	if s.isExpired(entry) {
 		delete(s.data, key)
-		return "", false
+		return "", store.ErrKeyNotFound
 	}
-
 	delete(s.data, key)
-	return entry.value, true
+	return entry.value, nil
 }
+
 
 func (s *TTLStore) TTL(key string) (time.Duration, error) {
 	entry, exists := s.data[key]
@@ -180,4 +175,12 @@ func (s *TTLStore) Len() int {
 		count++
 	}
 	return count
+}
+
+func (s *TTLStore) Delete(key string) error {
+	if key == "" {
+		return store.ErrEmptyKey
+	}
+	delete(s.data, key)
+	return nil
 }

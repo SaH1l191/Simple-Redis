@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
+	"os"
 	"simple-redis/store"
 	"simple-redis/ttl"
 	"time"
@@ -10,20 +10,10 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func SetKeyWithEncryption(s store.Storer, key, val string) (string, error) {
-	encoded := base64.StdEncoding.EncodeToString([]byte(val))
-
-	if err := s.Set(key, encoded); err != nil {
-		return "", err
-	}
-
-	return encoded, nil
-}
-
 func main() {
 	fmt.Println("Hello, World!")
 
-	logger := log.NewWithOptions(nil, log.Options{
+	logger := log.NewWithOptions(os.Stdout, log.Options{
 		ReportTimestamp: true,
 	})
 
@@ -82,8 +72,7 @@ func main() {
 	)
 
 	// Encryption
-	encryptedVal, err := SetKeyWithEncryption(
-		ttlStore,
+	encryptedVal, err := ttlStore.SetKeyWithEncryption(
 		"c",
 		"secretValue",
 	)

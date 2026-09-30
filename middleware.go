@@ -2,7 +2,6 @@ package main
 
 import (
 	"simple-redis/store"
-
 	"github.com/charmbracelet/log"
 )
 
@@ -19,7 +18,7 @@ import (
 //        |
 //        └── TTLStore    → TTL logic
 type LoggingMiddleware struct {
-	store  store.Storer
+	store  store.Storer //now this can be any store that implements the Storer interface , also this should implmenets all methods of the storer contract 
 	logger *log.Logger
 }
 
@@ -77,3 +76,18 @@ func (m *LoggingMiddleware) Len() int {
 
 	return length
 }
+
+func (m *LoggingMiddleware) Delete(key string) error {
+	m.logger.Info("DELETE", "key", key)
+
+	err := m.store.Delete(key)
+	if err != nil {
+		m.logger.Error("DELETE failed", "key", key, "error", err)
+		return err
+	}
+
+	m.logger.Info("DELETE successful", "key", key)
+
+	return nil
+}
+
